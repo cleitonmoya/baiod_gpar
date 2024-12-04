@@ -1,5 +1,5 @@
 # Bayesian Outlier Detection in GPAR(1)
-
+#
 # GPAR(1): Generalized Poisson AR(1) (Alzaid and Al-Osh, 1992):
 #   X_t = S_t(X_{t-1}) + e_t, t=1, 2 , ...
 #
@@ -185,8 +185,8 @@ logfyj1 <- function(j, alpha, mu, xi, delta, eta, p, y){
 	#logf3 <- logf(ys_3, ys1_3, alpha, mu, xi)
 	#logf4 <- logf(ys_4, ys1_4, alpha, mu, xi)
 	
-	logf1 <- logf(y[j]  -eta[j]  , y[j-1]-eta[j-1], alpha, mu, xi)
-    logf2 <- logf(y[j]  -eta[j]  , y[j-1]         , alpha, mu, xi)
+	#logf1 <- logf(y[j]  -eta[j]  , y[j-1]-eta[j-1], alpha, mu, xi)
+    #logf2 <- logf(y[j]  -eta[j]  , y[j-1]         , alpha, mu, xi)
     logf3 <- logf(y[j+1]-eta[j+1], y[j]  -eta[j]  , alpha, mu, xi)
     logf4 <- logf(y[j+1]         , y[j]  -eta[j]  , alpha, mu, xi)
     
@@ -240,7 +240,7 @@ logpost_p_j <- function(j, delta, p_j, l, m){
 }
 
 # Full conditional log-posterior of eta_j
-logpost_eta_j <- function(j, alpha, mu, xi, delta, eta, eta_j, beta){
+logpost_eta_j <- function(j, alpha, mu, xi, delta, eta, eta_j, p, beta, y){
 	logpi <- -beta[j] + eta_j*log(beta[j]) -log(factorial(eta_j))
 	eta_ <- eta
 	eta_[j] = eta_j
@@ -263,9 +263,10 @@ sim_xprop <- function(x, sigma){
 }
 
 # Acceptance probability of alpha_prop
-logprob_accept_alpha <- function(alpha_prop, alpha, mu, xi, x, a, b){
-	p1 <- logpost_alpha(alpha_prop, mu, xi, x, a, b)
-	p2 <- logpost_alpha(alpha, mu, xi, x, a, b)
+logprob_accept_alpha <- function(alpha_prop, alpha, mu, xi, 
+								 delta, eta, y, a, b){
+	p1 <- logpost_alpha(alpha_prop, mu, xi, delta, eta, y, a, b)
+	p2 <- logpost_alpha(alpha, mu, xi, delta, eta, y, a, b)
 	if (p1 < p2){
 		prob_accept <- min(1, exp(p1-p2))
 	} else {
@@ -275,9 +276,9 @@ logprob_accept_alpha <- function(alpha_prop, alpha, mu, xi, x, a, b){
 }
 
 # Acceptance probability of mu_prop
-logprob_accept_mu <- function(mu_prop, mu, alpha, xi, x, c, d){
-	p1 <- logpost_mu(alpha, mu_prop, xi, x, c, d)
-	p2 <- logpost_mu(alpha, mu, xi, x, c, d)
+logprob_accept_mu <- function(mu_prop, mu, alpha, xi, delta, eta, y, c, d){
+	p1 <- logpost_mu(alpha, mu_prop, xi, delta, eta, y, c, d)
+	p2 <- logpost_mu(alpha, mu, xi, delta, eta, y, c, d)
 	if (p1 < p2){
 		prob_accept <- min(1, exp(p1-p2))
 	} else {
@@ -287,9 +288,9 @@ logprob_accept_mu <- function(mu_prop, mu, alpha, xi, x, c, d){
 }
 
 # Acceptance probability of xi_prop
-logprob_accept_xi <- function(xi_prop, xi, alpha, mu, x, g, h){
-	p1 <- logpost_xi(alpha, mu, xi_prop, x, g, h)
-	p2 <- logpost_xi(alpha, mu, xi, x, g, h)
+logprob_accept_xi <- function(xi_prop, xi, alpha, mu, delta, eta, y, g, h){
+	p1 <- logpost_xi(alpha, mu, xi_prop, delta, eta, y, g, h)
+	p2 <- logpost_xi(alpha, mu, xi, delta, eta, y, g, h)
 	if (p1 < p2){
 		prob_accept <- min(1, exp(p1-p2))
 	} else {
@@ -298,8 +299,20 @@ logprob_accept_xi <- function(xi_prop, xi, alpha, mu, x, g, h){
 	return(prob_accept)
 }
 
-# Samples alpha
-ralpha <- function(p0, sigma, mu, xi, x, a, b){
+# Acceptance probability of beta_j_prop
+logprob_accept_beta_j <- function(j, beta_j_prop, beta_j, eta, v, w){
+	p1 <- logpost_beta_j(j, eta, beta_j_prop, v, w)
+	p2 <- logpost_beta_j(j, eta, beta_j, v, w)
+	if (p1 < p2){
+		prob_accept <- min(1, exp(p1-p2))
+	} else {
+		prob_accept = 1
+	}
+	return(prob_accept)
+}
+
+# Draw alpha (Random Walk Metropolis)
+ralpha <- function(p0, sigma, mu, xi, delta, eta, y, a, b){
 	
 	ac <- 0 # accepted flag
 	alpha <- p0
@@ -311,7 +324,8 @@ ralpha <- function(p0, sigma, mu, xi, x, a, b){
 	if (alpha_prop > 0 & alpha_prop < 1){
 		
 		# acceptance probability
-		prob_accept <- logprob_accept_alpha(alpha_prop, alpha, mu, xi, x, a, b)
+		prob_accept <- logprob_accept_alpha(alpha_prop, alpha, mu, xi, 
+											delta, eta, y, a, b)
 		
 		# acceptance criteria
 		u <- runif(1)
@@ -323,11 +337,11 @@ ralpha <- function(p0, sigma, mu, xi, x, a, b){
 	return(list(alpha=alpha, ac=ac))
 }
 
-# Samples mu
-rmu <- function(lambda0, sigma, alpha, xi, x, c, d){
+# Draw mu (Random Walk Metropolis)
+rmu <- function(mu0, sigma, alpha, xi, y, c, d){
 	
 	ac <- 0 # accepted flag
-	mu <- lambda0
+	mu <- mu0
 	
 	# simulate a proposed value for alpha
 	mu_prop <- sim_xprop(mu, sigma)
@@ -336,7 +350,8 @@ rmu <- function(lambda0, sigma, alpha, xi, x, c, d){
 	if (mu_prop > 0){
 		
 		# acceptance probability
-		prob_accept <- logprob_accept_mu(mu_prop, mu, alpha, xi, x, c, d)
+		prob_accept <- logprob_accept_mu(mu_prop, mu, alpha, xi, 
+										 delta, eta, y, c, d)
 		
 		# acceptance criteria
 		u <- runif(1)
@@ -348,11 +363,11 @@ rmu <- function(lambda0, sigma, alpha, xi, x, c, d){
 	return(list(mu=mu, ac=ac))
 }
 
-# Samples xi
-rxi <- function(theta0, sigma, alpha, mu, x, g, h){
+# Draw xi (Random Walk Metropolis)
+rxi <- function(xi0, sigma, alpha, mu, x, g, h){
 	
 	ac <- 0 # accepted flag
-	xi <- theta0
+	xi <- xi0
 	
 	# simulate a proposed value for alpha
 	xi_prop <- sim_xprop(xi, sigma)
@@ -361,7 +376,8 @@ rxi <- function(theta0, sigma, alpha, mu, x, g, h){
 	if (xi_prop >= 0 & xi_prop < 1){
 		
 		# acceptance probability
-		prob_accept <- logprob_accept_xi(xi_prop, xi, alpha, mu, x, g, h)
+		prob_accept <- logprob_accept_xi(xi_prop, xi, alpha, mu, 
+										 delta, eta, y, g, h)
 		
 		# acceptance criteria
 		u <- runif(1)
@@ -373,6 +389,90 @@ rxi <- function(theta0, sigma, alpha, mu, x, g, h){
 	return(list(xi=xi, ac=ac))
 }
 
+
+# Draw delta (Bernoulli Distribution)
+rdelta <- function(alpha, mu, xi, delta, eta, p, y){
+	n <- length(y)
+	j_seq: seq(2, n-1)
+	pi_delta_j <- sapply(j_seq, exp(logpost_delta_j(j, alpha, mu, xi, 
+											 delta, eta, p, y)))
+	delta[2:n] <- rbinom(n-2, 1, pi_delta_j)
+	return(delta) 
+}
+
+# Draw eta_j (Discrete Distribution)
+reta_j <- function (j, alpha, mu, xi, delta, eta, p, beta, y){
+	etaj_seq <- seq(0, y[j])
+	g <- function(z) exp(logpost_eta_j(j, alpha, mu, xi, delta, eta, eta_j=z, p, beta))
+	eta_pmf <- sapply(etaj_seq, g)
+	eta_pmf <- eta_pmf/sum(eta_pmf)
+	eta_j <- sample(etaj_seq, 1, prob=eta_pmf)
+	return(eta_j)
+}
+
+# Draw eta (only for delta_j = 1) 
+reta <- function(alpha, mu, xi, delta, eta, p, beta, y){
+	j_seq <- which(delta==1) # sample eta lonly for j|delta_j=1
+	g <- function(z) reta_j(j=z, alpha, mu, xi, delta, eta, p, beta, y)
+	eta <- sapply(j_seq, g)
+	return(eta)
+}
+
+# Draw p_j (Beta Distribution)
+rp_j <- function(j, delta, l, m){
+	pj <- rbeta(1, delta[j]+l, m-delta[j]+1)
+	return(pj)
+}
+
+# Draw p
+rp <- function(delta, l, m){
+	j_seq = seq(1, n)
+	g <- function(z) rp_j(j=z, delta, l, m)
+	p <- sapply(j_seq, g)
+	return(p)
+}
+
+# Draw beta_j (Random Walk Metropolis)
+rbeta_j <- function(j, beta_j0, sigma, eta, v, w){
+	ac <- 0 # accepted flag
+	beta_j <- beta_j0
+	
+	# simulate a proposed value for beta_j
+	beta_j_prop <- sim_xprop(beta_j, sigma)
+	
+	# verify the variable constrain
+	if (beta_j_prop > 0){
+		
+		# acceptance probability
+		prob_accept <- logprob_accept_beta_j(j, beta_j_prop, beta_j, eta, v, w)
+		
+		# acceptance criteria
+		u <- runif(1)
+		if  (u < prob_accept){
+			beta_j <- beta_j_prop
+			ac <- 1
+		}
+	}
+	return(list(beta_j=beta_j, ac=ac))
+}
+
+# Draw beta
+rbetavect <- function(x0, sigma, eta, v, w){
+	beta <- x0
+	n <- length(beta)
+	j_seq <- seq(1, n)
+	na <- 0
+	
+	for (j in j_seq){
+		res <- rbeta_j(j, x0[j], sigma, eta, v, w)
+		beta_j <- res$beta_j
+		na_j <- res$ac
+		na <- na + na_j
+		beta[j] <- beta_j
+	}
+	ac <- na/n # taxa de aceitação média
+	return(list(beta=beta, ac=ac))
+}
 
 # Read the data
 x_df <- read.csv("x.csv", header = TRUE)
@@ -415,10 +515,13 @@ v <- 10   # eta_t
 w <- 1    # eta_t
 
 # Random walking Metropolis parameters
-sigma_alpha <- 0.1
-sigma_mu    <- 0.2
-sigma_xi    <- 0.05
+sigma_alpha  <- 0.1
+sigma_mu     <- 0.2
+sigma_xi     <- 0.05
+sigma_beta   <- 6
 
+
+#####
 # Accepted steps counters
 na_alpha <- 0
 na_mu <- 0 

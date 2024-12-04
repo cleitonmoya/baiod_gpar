@@ -186,8 +186,8 @@ logfyj1 <- function(j, alpha, mu, xi, delta, eta, p, y){
 	#logf3 <- logf(ys_3, ys1_3, alpha, mu, xi)
 	#logf4 <- logf(ys_4, ys1_4, alpha, mu, xi)
 	
-	logf1 <- logf(y[j]  -eta[j]  , y[j-1]-eta[j-1], alpha, mu, xi)
-    logf2 <- logf(y[j]  -eta[j]  , y[j-1]         , alpha, mu, xi)
+	#logf1 <- logf(y[j]  -eta[j]  , y[j-1]-eta[j-1], alpha, mu, xi)
+    #logf2 <- logf(y[j]  -eta[j]  , y[j-1]         , alpha, mu, xi)
     logf3 <- logf(y[j+1]-eta[j+1], y[j]  -eta[j]  , alpha, mu, xi)
     logf4 <- logf(y[j+1]         , y[j]  -eta[j]  , alpha, mu, xi)
     
@@ -241,7 +241,7 @@ logpost_p_j <- function(j, delta, p_j, l, m){
 }
 
 # Full conditional log-posterior of eta_j
-logpost_eta_j <- function(j, alpha, mu, xi, delta, eta, eta_j, beta){
+logpost_eta_j <- function(j, alpha, mu, xi, delta, eta, eta_j, p, beta){
 	logpi <- -beta[j] + eta_j*log(beta[j]) -log(factorial(eta_j))
 	eta_ <- eta
 	eta_[j] = eta_j
@@ -301,7 +301,7 @@ mu_seq    <- seq(0.1, 10, 0.1)
 xi_seq    <- seq(0.1, 0.9, 0.01)
 j_seq     <- seq(2, n-1)
 pj_seq	  <- seq(0.01, 0.99, 0.01)
-etaj_seq  <- seq(0, 12)
+eta7_seq  <- seq(0, y[7])
 betaj_seq <- seq(0.1, 16, 0.1)
 
 h1 <- function(z) logpost_alpha(alpha=z, mu, xi, delta, eta, y, a, b)
@@ -323,8 +323,9 @@ y5 <- sapply(pj_seq, h5)
 h6 <- function(z) logpost_p_j(10, delta, p_j=z, l, m)
 y6 <- sapply(pj_seq, h6)
 
-h7 <- function(z) logpost_eta_j(7, alpha, mu, xi, delta, eta, eta_j=z, beta)
-y7 <- sapply(etaj_seq, h7)
+h7 <- function(z) exp(logpost_eta_j(7, alpha, mu, xi, delta, eta, eta_j=z, p, beta))
+y7 <- sapply(eta7_seq, h7)
+y7 <- y7/sum(y7)
 
 h8 <- function(z) logpost_beta_j(7, eta, beta_j=z, v, w)
 y8 <- sapply(betaj_seq, h8)
@@ -338,6 +339,6 @@ plot(xi_seq, y3, type="l", xlab="xi", ylab="log-posterior density")
 plot(1:n, y4, type="h", xlab="t", ylab="posterior density", main="delta_t")
 plot(pj_seq, y5, type="l", ylab="log-posterior density", main="p_7")
 plot(pj_seq, y6, type="l", ylab="log-posterior density", main="p_10")
-plot(etaj_seq, y7, type="p", xlab="eta_7", ylab="log-posterior density")
+plot(eta7_seq, y7, type="b", xlab="eta_7", ylab="posterior pmf")
 plot(betaj_seq, y8, type="l", xlab="beta_7", ylab="log-posterior density")
 plot(betaj_seq, y9, type="l", xlab="beta_10", ylab="log-posterior density")

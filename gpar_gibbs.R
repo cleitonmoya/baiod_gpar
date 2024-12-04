@@ -190,10 +190,10 @@ ralpha <- function(p0, sigma, mu, xi, x, a, b){
 }
 
 # Samples mu
-rmu <- function(lambda0, sigma, alpha, xi, x, c, d){
+rmu <- function(mu0, sigma, alpha, xi, x, c, d){
     
     ac <- 0 # accepted flag
-    mu <- lambda0
+    mu <- mu0
     
     # simulate a proposed value for alpha
     mu_prop <- sim_xprop(mu, sigma)
@@ -215,10 +215,10 @@ rmu <- function(lambda0, sigma, alpha, xi, x, c, d){
 }
 
 # Samples xi
-rxi <- function(theta0, sigma, alpha, mu, x, g, h){
+rxi <- function(xi0, sigma, alpha, mu, x, g, h){
     
     ac <- 0 # accepted flag
-    xi <- theta0
+    xi <- xi0
     
     # simulate a proposed value for alpha
     xi_prop <- sim_xprop(xi, sigma)
