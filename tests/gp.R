@@ -13,7 +13,10 @@ mu <- lambda/(1-theta)
 sigma2 <- lambda/(1-theta)^3
 
 # gera uma amostra aleatória
-# Note que, para biblioteca, GP(theta,lambda)
+# Note que biblioteca "gp" usa parâmetros com notação invertida da mais usual
+# da literatura:
+#   usual: GP(lambda, theta)
+#   biblioteca: GP(theta, lambda)
 x <- rgp(n=N, lambda, theta, method="Branching")
 
 # histograma e densidade estimada

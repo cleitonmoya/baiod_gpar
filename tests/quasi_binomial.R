@@ -25,7 +25,7 @@ rqb <- function(size, p, theta, n){
     y <- sample(x, size=size, replace=TRUE, prob=w)
     return(y)
 }
-    
+
 n <- 100
 p <- 0.5
 theta <- 0.2

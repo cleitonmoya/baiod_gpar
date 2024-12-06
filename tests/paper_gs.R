@@ -7,7 +7,7 @@ qsi   <- 0.5
 
 # fórmula do artigo
 gs_artigo <- function(s, xt1, alpha, mu, qsi){
-    alpha * choose(xt1, s) * (alpha + s*(qsi/mu))^(s-1) * 
+    alpha * choose(xt1, s) * (alpha + s*(qsi/mu))^(s-1) *
         (1 - alpha -s*(qsi/mu))^(xt1-s)
 }
 
