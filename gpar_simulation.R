@@ -18,16 +18,26 @@ rm(list=ls())	# limpa o workspace
 cat("\014") 	# limpa o console
 set.seed(42)
 
+# Print auxiliary function
+printf <- function(...) {
+    x = paste(sprintf(...),"\n")
+    return(cat(x))
+}
+
+# (alpha, mu, sigma) <- (0.8, 2, 0.5)
+
 # Parâmetros do processo
-alpha <- 0.8
+alpha <- 0.85
 mu    <- 2
-xi    <- 0.5
-q <- 1-alpha
-mu <- mu/(1-xi)
-sigma2 <- mu/(1-xi)^3
+xi    <- 0.2
+q     <- 1-alpha
+
+mean_x <- mu/(1-xi)
+var_x <- mu/(1-xi)^3
+sd_x <- sqrt(var_x)
 
 # Simulação
-T <- 100
+T <- 200
 
 # Quasi-binomial thinning pmf
 dqb <- function(x, alpha, xi, n){
@@ -58,19 +68,27 @@ x <- NULL
 x[1] <- mu
 for (t in 2:T){
     # Gera o erro aletório (função da biblioteca gp)
-    e <- rgp(n=2, xi=xi, mu=q*mu, method="Branching")[1]
-    
+    e <- rgp(n=2, q*mu, xi, method="Branching")[1]
+
     # Operador quasi-binomial thinning (seq. de v.a. QB)
     s <- rqb(1, alpha, xi/mu, x[t-1])
     x[t] <- s + e
 }
 
 #####
+# Theoretical vs. sample mean and variance
+printf("Theoretical mean: %.2f", mean_x)
+printf("Sample mean: %.2f", mean(x))
+printf("Theoretical var: %.2f", var_x)
+printf("Sample var: %.2f", var(x))
+
+#####
 # Gráfico
 par(mar = c(2, 2, 0.2, 0.2))
 plot(x, type='s')
-abline(h=mu, col="gray", lty=2)
-
+abline(h=mean_x, col="gray", lty=2)
+abline(h=mean_x + 3*sd_x, col="gray", lty=3)
+legend(x="topright", lty=c(2,3), col="gray", legend=c("E[X]", "E[X] + 3sigma[X]"))
 #####
 # Exporta os dados
 write.csv(x, file = "x.csv", row.names = FALSE)

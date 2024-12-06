@@ -6,18 +6,20 @@ set.seed(42)
 
 # parâmetros da distribuição
 N <- 1000
-theta <- 5
-lambda <- 0.5
-mu <- theta/(1-lambda)
+lambda <- 2
+theta <- 0.5
+
+mu <- lambda/(1-theta)
+sigma2 <- lambda/(1-theta)^3
 
 # gera uma amostra aleatória
-x <- rgp(n=N, theta=theta, lambda=lambda, method="Branching")
+# Note que, para biblioteca, GP(theta,lambda)
+x <- rgp(n=N, lambda, theta, method="Branching")
 
 # histograma e densidade estimada
 hist(x, freq=FALSE, breaks=20)
 lines(density(x), col="red")
 
 # MLE
-cat("mu:", mu)
-cat("\nMLE:\n")
-print(gp.mle(x))
+print(mu)
+print(sigma2)
