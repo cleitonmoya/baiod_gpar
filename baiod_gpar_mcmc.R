@@ -498,13 +498,6 @@ eta        <- rep(0, T)
 p          <- rep(0.05, T)
 beta       <- rep(1, T)
 
-
-# Prepare delta and eta vectors
-delta[tau] <- 1
-eta[tau] <- eta_tau
-# Prepare p and beta vectors
-
-
 # Prior hyperparameters
 a <- 0.01 # alpha
 b <- 0.01 # alpha
