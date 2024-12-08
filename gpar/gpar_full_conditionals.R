@@ -7,8 +7,8 @@ rm(list=ls())	# clear the (global) environment variables
 cat("\014") 	# clear the console (Ctrl+L)
 
 # Read the data
-x_df <- read.csv("x.csv", header = TRUE)
-x <- as.vector(x_df$x)
+x_df <- read.csv("data/x_120_poinar.csv", header = FALSE)
+x <- x_df[[1]]
 
 # Log-sum-exp auxiliary function
 logsumexp <- function(x){
@@ -75,7 +75,7 @@ logpost_mu <- function(alpha, mu, xi, x, c, d){
 # Full conditional log-posterior of xi
 logpost_xi <- function(alpha, mu, xi, x, g, h){
     n <- length(x)
-    logc1 <- (g-1)*log(xi) - h*xi
+    logc1 <- (g-1)*log(xi) + (h-1)*log(1-xi)
     
     soma1 <- 0
     for (t in 2:n){
@@ -92,17 +92,17 @@ logpost_xi <- function(alpha, mu, xi, x, g, h){
 }
 
 # Model parameters
-alpha <- 0.8
-mu    <- 2
-xi    <- 0.5
+alpha <- 0.85
+mu    <- 6.66
+xi    <- 0
 
 # Prior hyperparameters
 a <- 0.01
 b <- 0.01
 c <- 0.1
 d <- 0.1
-g <- 0.1
-h <- 0.1
+g <- 1
+h <- 1
 
 # Plot the full conditional posteriors
 alpha_seq      <- seq(0.01, 0.99, 0.01)

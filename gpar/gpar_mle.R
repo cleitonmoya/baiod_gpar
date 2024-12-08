@@ -7,8 +7,8 @@ rm(list=ls())	# clear the (global) environment variables
 cat("\014") 	# clear the console (Ctrl+L)
 
 # Read the data
-x_df <- read.csv("x.csv", header = TRUE)
-x <- as.vector(x_df$x)
+x_df <- read.csv("data/x_120_poinar.csv", header = FALSE)
+x <- as.vector(x_df$V1)
 #x_df <- read.csv("earthquakes.csv", col.names = c("Ano", "Intensidade"), header=FALSE)
 #x <- as.vector(x_df$Intensidade)
 

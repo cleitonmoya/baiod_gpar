@@ -29,7 +29,7 @@ printf <- function(...) {
 # Parâmetros do processo
 alpha <- 0.85
 mu    <- 2
-xi    <- 0.2
+xi    <- 0.2 #0.2
 q     <- 1-alpha
 
 mean_x <- mu/(1-xi)
@@ -37,7 +37,7 @@ var_x <- mu/(1-xi)^3
 sd_x <- sqrt(var_x)
 
 # Simulação
-T <- 200
+T <- 120
 
 # Quasi-binomial thinning pmf
 dqb <- function(x, alpha, xi, n){
@@ -92,4 +92,4 @@ legend(x="topright", lty=c(2,3), col="gray", legend=c("E[X]", "E[X] + 3sigma[X]"
 
 #####
 # Exporta os dados
-write.csv(x, file = "data/x.csv", row.names = FALSE)
+write.csv(x, file = "data/x_100_mu0.csv", row.names = FALSE, col.names=FALSE)

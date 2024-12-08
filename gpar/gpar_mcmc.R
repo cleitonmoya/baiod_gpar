@@ -31,8 +31,8 @@ cat("\014") 	# clear the console (Ctrl+L)
 set.seed(42)
 
 # Read the data
-x_df <- read.csv("x.csv", header = TRUE)
-x <- as.vector(x_df$x)
+x_df <- read.csv("data/x_120_poinar.csv", header = FALSE)
+x <- x_df[[1]]
 
 # Print auxiliary function
 printf <- function(...) {
@@ -242,13 +242,13 @@ rxi <- function(xi0, sigma, alpha, mu, x, g, h){
 #####
 # Gibbs Sampling (with random walking Metropopolis steps)
 
-N <- 1200  # simulation steps
-burnin <- 200
+N <- 500  # simulation steps
+burnin <- 100
 
 # Parameters initilization
 alpha <- 0.1
-mu    <- 10
-xi    <- 0.1
+mu    <- 0.1
+xi    <- 0.9
 
 # Model hyperparameters (priors)
 # alpha      ~ Beta(a,b)
@@ -258,8 +258,8 @@ a <- 0.01
 b <- 0.01
 c <- 0.1
 d <- 0.1
-g <- 0.01
-h <- 0.01
+g <- 1
+h <- 1
 
 # Random walking Metropolis parameters
 sigma_alpha <- 0.1

@@ -66,6 +66,7 @@ logf1 <- function(r, t, alpha, mu, xi, z){
 	return(logf1)
 }
 
+# ys1: y*[t-1]
 log_f1 <- function(r, alpha, mu, xi, ys1){
     q <- 1-alpha
     logf1 <- log(choose(ys1, r)) + (r-1)*log(alpha*mu + r*xi) +
@@ -81,6 +82,7 @@ logf2 <- function(r, t, alpha, mu, xi, z){
 	return(logf2)
 }
 
+# ys: y*[t]
 log_f2 <- function(r, alpha, mu, xi, ys){
     q <- 1-alpha
     logf2 <- (ys-r-1)*log(q*mu + xi*(ys-r)) -xi*(ys-r) -
@@ -89,7 +91,7 @@ log_f2 <- function(r, alpha, mu, xi, ys){
 }
 
 
-# Full conditionallog-posterior of alpha
+# Full conditional log-posterior of alpha
 logpost_alpha <- function(alpha, mu, xi, delta, eta, y, a, b){
 	z <- y - eta*delta
 	q <- 1-alpha
@@ -137,14 +139,14 @@ logpost_mu <- function(alpha, mu, xi, delta, eta, y, c, d){
 logpost_xi <- function(alpha, mu, xi, delta, eta, y, g, h){
     z <- y - eta*delta
     T <- length(y)
-    logc1 <- (g-1)*log(xi) - h*xi
-
+    logc1 <- (g-1)*log(xi) + (h-1)*log(1-xi)
+    
     soma1 <- 0
     for (t in 2:T){
         logc2 <- -(z[t-1]-1)*log(mu + z[t-1]*xi)
         Mt <- min(z[t], z[t-1])
         r_seq <- 0:Mt
-
+        
         g <- function(r) logf1(r, t, alpha, mu, xi, z) +
             logf2(r, t, alpha, mu, xi, z)
         logsoma2 <- logsumexp(sapply(r_seq, g))
@@ -174,31 +176,30 @@ logf <- function(ys, ys1, alpha, mu, xi){
     return(logf)
 }
 
-# needs only delta[j-1], eta[j-1], eta[j] e eta[j+1]
 logfyj1 <- function(j, alpha, mu, xi, delta, eta, p, y){
-
+    
     logf3 <- logf(y[j+1]-eta[j+1], y[j]  -eta[j]  , alpha, mu, xi)
     logf4 <- logf(y[j+1]         , y[j]  -eta[j]  , alpha, mu, xi)
-
+    
     g3 <- logf3 + log(p[j+1])
     g4 <- logf4 + log(1-p[j+1])
     if (delta[j-1] == 1){
-    	logf1 <- logf(y[j]  -eta[j]  , y[j-1]-eta[j-1], alpha, mu, xi)
+        logf1 <- logf(y[j]  -eta[j]  , y[j-1]-eta[j-1], alpha, mu, xi)
         out <- logf1 + logsumexp(c(g3,g4))
     } else {
-    	logf2 <- logf(y[j]  -eta[j]  , y[j-1]         , alpha, mu, xi)
+        logf2 <- logf(y[j]  -eta[j]  , y[j-1]         , alpha, mu, xi)
         out <- logf2 + logsumexp(c(g3,g4))
     }
-
+    
     return(out)
 }
 
 # needs only delta[j-1], eta[j-1], eta[j+1]
 logfyj0 <- function(j, alpha, mu, xi, delta, eta, p, y){
-
+    
     logf3 <- logf(y[j+1]-eta[j+1], y[j]           , alpha, mu, xi)
     logf4 <- logf(y[j+1]         , y[j]           , alpha, mu, xi)
-
+    
     g3 <- logf3 + log(p[j+1])
     g4 <- logf4 + log(1-p[j+1])
     if (delta[j-1] == 1){
@@ -208,7 +209,7 @@ logfyj0 <- function(j, alpha, mu, xi, delta, eta, p, y){
         logf2 <- logf(y[j]           , y[j-1]         , alpha, mu, xi)
         out <- logf2 + logsumexp(c(g3,g4))
     }
-
+    
     return(out)
 }
 
@@ -354,40 +355,41 @@ rmu <- function(mu0, sigma, alpha, xi, delta, eta, y, c, d){
 }
 
 # Draw xi (Random Walk Metropolis)
+# Samples xi
 rxi <- function(xi0, sigma, alpha, mu, delta, eta, y, g, h){
-
-	ac <- 0 # accepted flag
-	xi <- xi0
-
-	# simulate a proposed value for alpha
-	xi_prop <- sim_xprop(xi, sigma)
-
-	# verify the variable constrain
-	if (xi_prop >= 0 & xi_prop < 1){
-
-		# acceptance probability
-		prob_accept <- logprob_accept_xi(xi_prop, xi, alpha, mu,
-										 delta, eta, y, g, h)
-
-		# acceptance criteria
-		u <- runif(1)
-		if  (u < prob_accept){
-			xi <- xi_prop
-			ac <- 1
-		}
-	}
-	return(list(xi=xi, ac=ac))
+    
+    ac <- 0 # accepted flag
+    xi <- xi0
+    
+    # simulate a proposed value for alpha
+    xi_prop <- sim_xprop(xi, sigma)
+    
+    # verify the variable constrain
+    if (xi_prop >= 0 & xi_prop < 1){
+        
+        # acceptance probability
+        prob_accept <- logprob_accept_xi(xi_prop, xi, alpha, mu, delta, eta, y, g, h)
+        
+        # acceptance criteria
+        u <- runif(1)
+        if  (u < prob_accept){
+            xi <- xi_prop
+            ac <- 1
+        }
+    }
+    return(list(xi=xi, ac=ac))
 }
+
 
 
 # Draw delta (Bernoulli Distribution)
 rdelta <- function(alpha, mu, xi, delta, eta, p, y){
-	T <- length(y)
-	j_seq <- seq(2, T-1)
+	n <- length(y)
+	j_seq <- seq(2, n-1)
 	g <- function(z) exp(logpost_delta_j(j=z, alpha, mu, xi, delta, eta, p, y))
 	prob_delta <- sapply(j_seq, g)
+	delta[2:(n-1)] <- rbinom(n-2, 1, prob_delta)
 	prob_delta <- c(0, prob_delta, 0)
-	delta[2:(T-1)] <- rbinom(T-2, 1, prob_delta)
 	return(list(delta=delta, prob_delta=prob_delta))
 }
 
@@ -470,29 +472,38 @@ rbetavect <- function(x0, sigma, eta, v, w){
 }
 
 # Read the data
-x_df <- read.csv("x.csv", header = TRUE)
-x <- as.vector(x_df$x)
+x_df <- read.csv("data/x_120_poinar.csv", header = FALSE)
+x <- x_df[[1]]
 T <- length(x)
 
 # Insert the outliers
-tau <- c(25, 75, 125, 175, 176)
-eta_tau <- 10
+#tau <- c(25, 75, 76, 125, 175)
+#eta_tau <- 15
+tau <- c(7, 26, 60, 90, 91)
+eta_tau <- 9
 y <- x
 y[tau] <- y[tau] + eta_tau
 
 # Simulation parameters
-N      <- 1000 # number of steps
-burnin <- 200
+N      <- 500 # number of steps
+burnin <- 100
 
 # Parameters intialization
 alpha      <- 0.1
-mu         <- 0.1
-xi         <- 0.01
+mu         <- 1
+xi         <- 0.5
 delta      <- rep(0, T)
 prob_delta <- rep(0, T)
 eta        <- rep(0, T)
-p          <- rep(0.01, T)
-beta       <- rep(5, T)
+p          <- rep(0.05, T)
+beta       <- rep(1, T)
+
+
+# Prepare delta and eta vectors
+delta[tau] <- 1
+eta[tau] <- eta_tau
+# Prepare p and beta vectors
+
 
 # Prior hyperparameters
 a <- 0.01 # alpha
@@ -508,9 +519,9 @@ w <- 1    # eta_t
 
 # Random walking Metropolis parameters
 sigma_alpha  <- 0.1
-sigma_mu     <- 0.5
-sigma_xi     <- 0.02
-sigma_beta   <- 3
+sigma_mu     <- 1
+sigma_xi     <- 0.05
+sigma_beta   <- 4
 
 # Accepted steps counters
 na_alpha <- 0
@@ -527,6 +538,7 @@ Prob_delta <- matrix(nrow=N, ncol=T)
 Eta 	   <- matrix(nrow=N, ncol=T)
 P		   <- matrix(nrow=N, ncol=T)
 Beta	   <- matrix(nrow=N, ncol=T)
+
 
 Alpha[1] <- alpha
 Mu[1] <- mu
@@ -564,26 +576,26 @@ for (n in 2:N){
 	na_xi <- na_xi +  res$ac
 	Xi[n] <- xi
 
-	# Draw delta (Bernoulli)
-	res <- rdelta(alpha, mu, xi, delta, eta, p, y)
-	delta <- res$delta
-	prob_delta <-res$prob_delta
-	Delta[n, ] <- delta
-	Prob_delta[n, ] <- res$prob_delta
-
-	# Draw eta (Discrete simulation)
-	eta <- reta(alpha, mu, xi, delta, eta, p, beta, y)
-	Eta[n, ] <- eta
-
-	# Draw p (Beta)
+	# Draw p (Beta distribution)
 	p <- rp(delta, l, m)
 	P[n, ] <- p
+
+	# Draw eta (Discrete simulation - R sample function)
+	eta <- reta(alpha, mu, xi, delta, eta, p, beta, y)
+	Eta[n, ] <- eta
 
 	# Draw beta (Metropolis step)
 	res <- rbetavect(beta, sigma_beta, eta, v, w)
 	beta <- res$beta
 	ac_beta <- (n-1)*(ac_beta)/n + res$ac/n
 	Beta[n, ] <- beta
+	
+	# Draw delta (Bernoulli distribution)
+	res <- rdelta(alpha, mu, xi, delta, eta, p, y)
+	delta <- res$delta
+	prob_delta <-res$prob_delta
+	Delta[n, ] <- delta
+	Prob_delta[n, ] <- res$prob_delta
 }
 #####
 # Execution time
@@ -636,9 +648,10 @@ tau_est <- which(prob_delta_mean > threshold)
 printf("alpha mean: %.2f", alpha_mean)
 printf("mu mean: %.2f", mu_mean)
 printf("xi mean: %.2f", xi_mean)
-cat("tau_est: ", tau_est)
 cat("\ntau: ", tau)
-cat("\neta_est|tau_est: ", eta_est[tau_est])
+cat("\ntau_est: ", tau_est)
+cat("\nprob_delta[tau_est]: ", prob_delta_mean[tau_est])
+cat("\neta_est ", eta_est[tau_est])
 
 #####
 # Trace plots
@@ -650,37 +663,46 @@ abline(v=burnin, col="gray", lty=2)
 plot(Xi, type="l", main="xi", xlab="step", ylab="", ylim=c(0,1))
 abline(v=burnin, col="gray", lty=2)
 
+#####
 par(mfrow = c(4, 1), mar=c(4,3,2,2))
-plot(Prob_delta[, 25], type="l", main="delta_t", xlab="", ylab="")
-lines(Prob_delta[, 75], type="l", main="delta_t", xlab="", ylab="", col=2)
-lines(Prob_delta[, 125], type="l", main="delta_t", xlab="", ylab="", col=3)
+plot(Prob_delta[, tau_est[1]], type="l", main="delta_t", xlab="", ylab="")
+jmax <- min(5,length(tau_est))
+for (j in 2:jmax){
+    lines(Prob_delta[, tau_est[j]], type="l", main="delta_t", xlab="", ylab="", col=j)
+}
+
 abline(v=burnin, col="gray", lty=2)
-plot(P[, 25], type="l", main="p_t", xlab="", ylab="")
+plot(P[, 90], type="l", main="p_t", xlab="", ylab="")
 abline(v=burnin, col="gray", lty=2)
-plot(Eta[, 25], type="s", main="eta_t", xlab="", ylab="")
+plot(Eta[, 90], type="s", main="eta_t", xlab="", ylab="")
 abline(v=burnin, col="gray", lty=2)
-plot(Beta[, 25], type="l", main="beta_t", xlab="", ylab="")
+plot(Beta[, 90], type="l", main="beta_t", xlab="", ylab="")
 abline(v=burnin, col="gray", lty=2)
 
 
 #####
 #Outlier detection
 par(mfrow = c(3, 1), mar=c(4,3,2,2))
-plot(y, type="s", main="Time series and outliers", xlab="", ylab="", font.main=1)
+plot(y, type="s", main="Generalized Poisson AR(1) and outliers", xlab="", ylab="", 
+     font.main=1)
 points(tau, y[tau], col="blue", pch=0)
 points(tau_est, y[tau_est], col="red", pch=4)
-legend(x="topright", pch=c(0, 4), col=c("blue", "red"), legend=c("label", "detected"))
-plot(prob_delta_mean, type="h", main=expression(delta[t]~posterior~probability~(mean)), xlab="", ylab="")
+legend(x="topright", pch=c(0, 4), col=c("blue", "red"), 
+       legend=c("label", "detected"))
+plot(prob_delta_mean, type="h",
+     main=expression(delta[t]~posterior~probability~(mean)), 
+     xlab="", ylab="", ylim=c(0,1))
 legend(x="topright", col="red", lty=2, legend="threshold")
 abline(h=threshold, col="red", lty=2)
 y_ <- rep(0, T)
 y_[tau_est] <- eta_est[tau_est]
-plot(1:T, y_, type="h", main=expression(eta[t] * " | " * (delta[t]==1) ~ (median)), xlab="t", ylab="")
+plot(1:T, y_, type="h", 
+     main=expression(eta[t] * " | " * (delta[t]==1) ~ (median)), 
+     xlab="t", ylab="")
 
 #####
 # Posterior densities
 par(mfrow=c(1,1))
-plot(density(Alpha_final), main="alpha")
-plot(density(Mu_final), main="mu")
-plot(density(Xi_final), main="xi")
-
+plot(density(Alpha_final, bw=0.02), main="alpha", xlab="alpha")
+plot(density(Mu_final, bw=0.3), main="mu", xlab="mu")
+plot(density(Xi_final, bw=0.03), main="xi", xlab="xi")
